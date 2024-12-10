@@ -1,0 +1,6 @@
+{
+  "files.associations": {
+    "infrared_sensor.c": "cpp",
+    "main.h": "c"
+  }
+}
