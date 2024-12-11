@@ -1,134 +1,35 @@
-// #include "main.h"
-
-// // Function prototypes for FreeRTOS tasks
-// void motor_control_task(void *pvParameters);
-// void ultrasonic_sensor_task(void *pvParameters);
-// void ldr_sensor_task(void *pvParameters);
-// void led_buzzer_task(void *pvParameters);
-
-// // Global variables to share data between tasks
-
-// // float distance1 = 0, distance2 = 0;
-// float light_intensity = 0;
-
-// int main()
-// {
-//     // Initialize stdio and peripherals
-//     stdio_init_all();
-//     setup_ldr_gl5528();
-//     setup_ultrasonic();
-//     infrared_sensor_init();
-//     motor_init();
-//     buzzer_init();
-//     pico_led_init(20);
-//     pico_led_init(21);
-
-//     // Create FreeRTOS tasks
-//     // xTaskCreate(motor_control_task, "Motor Control", 1024, NULL, 1, NULL);
-//     xTaskCreate(ultrasonic_sensor_task, "Ultrasonic Sensor", 1024, NULL, 1, NULL);
-//     // xTaskCreate(ldr_sensor_task, "LDR Sensor", 1024, NULL, 1, NULL);
-//     //  xTaskCreate(led_buzzer_task, "LED and Buzzer", 1024, NULL, 1, NULL);
-
-//     // Start the FreeRTOS scheduler
-//     vTaskStartScheduler();
-
-//     // The program should never reach here
-//     while (1)
-//     {
-//         sleep_ms(1000);
-//     }
-//     return 0;
-// }
-
-// // Task to control motors based on the infrared sensor
-
-// // Task to measure distances using ultrasonic sensors
-// void ultrasonic_sensor_task(void *pvParameters)
-// {
-//     while (1)
-//     {
-//         send_trigger_pulse();
-
-//         // Measure and calculate distances for both sensors
-//         float distance1 = calculate_distance(measure_echo_time());
-//         // float distance2 = calculate_distance(measure_echo_time2());
-
-//         // Control LED based on distance1 (and optionally distance2)
-//         if (distance1 < 10) // Ensure valid distance
-//         {
-//             pico_set_led(20, true);
-//         }
-//         else
-//         {
-//             pico_set_led(20, false);
-//         }
-
-//         send_trigger_pulse2();
-
-//         // Measure and calculate distances for both sensors
-//         float distance2 = calculate_distance(measure_echo_time2());
-
-//         // Optional: Additional logic for distance2
-//         if (distance2 < 10)
-//         {
-//             pico_set_led(21, true); // Example for a second LED
-//         }
-//         else
-//         {
-//             pico_set_led(21, false);
-//         }
-
-//         // Debugging output
-//         printf("Distance1: %.2f cm, Distance2: %.2f cm\n", distance1, distance2);
-
-//         // Delay to run task every 200 ms
-//         vTaskDelay(200 / portTICK_PERIOD_MS);
-//     }
-// }
-
-// // Task to read light intensity from the LDR sensor
-
-// // Task to control the LED and buzzer based on sensor data
-// void led_buzzer_task(void *pvParameters) {
-//     while (1) {
-//         if (light_intensity >= 50 && (distance1 < 5 || distance2 < 5)) {
-//             //buzzer_beep(5000, 2000);
-//         } else if (light_intensity < 50 && (distance1 < 5 || distance2 < 5)) {
-//             pico_set_led(20, true);
-//         } else {
-//             pico_set_led(20, false);
-//         }
-//         vTaskDelay(100 / portTICK_PERIOD_MS); // Run every 100ms
-//     }
-// }
-
 #include "main.h"
-
 // Global variables to store sensor readings (can be shared among tasks)
 float ultrasonic1_distance = 0.0;
 float ultrasonic2_distance = 0.0;
 float ldr_intensity = 0;
-
+bool is_SystemOn=false;
 void ultrasonic_task1(void *params)
 {
+    printf("Ultrasonic Task 1\n");
     while (true)
     {
+        printf("Ultrasonic Task 1\n");
         send_trigger_pulse();
         ultrasonic1_distance = calculate_distance(measure_echo_time());
-
-        if (ultrasonic1_distance <= 3)
+        printf("Distance 1 : %f\n", ultrasonic1_distance);
+        if (ultrasonic1_distance <= 3 && is_SystemOn)
         {
             if (ldr_intensity < 40)
             {
                 pico_set_led(20, true); // Turn on LED 1
+                buzzer_off();
             }
             else
             {
+                pico_set_led(20, false);
                 buzzer_beep(5000, 100); // Turn on Buzzer 1
+
             }
         }
         else
         {
+            buzzer_off();
             pico_set_led(20, false); // Turn off LED 1
         }
 
@@ -138,24 +39,30 @@ void ultrasonic_task1(void *params)
 
 void ultrasonic_task2(void *params)
 {
+    printf("Ultrasonic Task 2\n");
     while (true)
     {
+        printf("Ultrasonic Task 2\n");
         send_trigger_pulse2();
         ultrasonic2_distance = calculate_distance(measure_echo_time2());
+        printf("Distance 2 : %f\n", ultrasonic2_distance);
 
-        if (ultrasonic2_distance <= 3)
+        if (ultrasonic2_distance <= 3 && is_SystemOn)
         {
             if (ldr_intensity < 40)
             {
                 pico_set_led(21, true); // Turn on LED 2
+                buzzer_off2();
             }
             else
             {
+                pico_set_led(21, false);
                 buzzer_beep2(5000, 100); // Turn on Buzzer 2
             }
         }
         else
         {
+            buzzer_off2();
             pico_set_led(21, false); // Turn off LED 2
         }
 
@@ -165,8 +72,10 @@ void ultrasonic_task2(void *params)
 
 void ldr_sensor_task(void *pvParameters)
 {
+    printf("LDR Task\n");
     while (1)
     {
+        printf("LDR Task\n");
         uint16_t raw_value = read_ldr_gl5528_raw();
         float voltage = ldr_gl5528_to_voltage(raw_value);
         float resistance = ldr_gl5528_to_resistance(voltage);
@@ -178,26 +87,46 @@ void ldr_sensor_task(void *pvParameters)
 
 void motor_control_task(void *pvParameters)
 {
+    printf("Motor Task\n");
     while (1)
     {
-        if (!infrared_sensor_is_triggered())
-        {
-            motor_stop(FRONT_LEFT);
-            motor_stop(BACK_LEFT);
-            motor_stop(FRONT_RIGHT);
-            motor_stop(BACK_RIGHT);
-        }
-        else
-        {
+        printf("Motor Task\n");
+        if(is_SystemOn){
+            if (!infrared_sensor_is_triggered() )
+            {
+                motor_stop(FRONT_LEFT);
+                motor_stop(BACK_LEFT);
+                motor_stop(FRONT_RIGHT);
+                motor_stop(BACK_RIGHT);
+            }
+            else
+            {
             motor_control(100, true, FRONT_LEFT);
             motor_control(100, true, BACK_LEFT);
             motor_control(100, true, FRONT_RIGHT);
             motor_control(100, true, BACK_RIGHT);
+            }
         }
+        else
+            {
+                motor_stop(FRONT_LEFT);
+                motor_stop(BACK_LEFT);
+                motor_stop(FRONT_RIGHT);
+                motor_stop(BACK_RIGHT);
+            }
+       
+        
         vTaskDelay(pdMS_TO_TICKS(100)); // Run every 100ms
     }
 }
-
+void switch_task(void *pvParameters){
+    while (1)
+    {
+        is_SystemOn=get_status();
+        vTaskDelay(pdMS_TO_TICKS(100)); // Run every 100ms
+    }
+    
+}
 int main()
 {
     stdio_init_all();
@@ -209,12 +138,15 @@ int main()
     buzzer_init2();
     pico_led_init(LED_PIN1);
     pico_led_init(LED_PIN2);
-
+    switch_init();
     // Create tasks
+    printf("Starting tasks...\n");
+    
     xTaskCreate(ldr_sensor_task, "LDR Task", 1024, NULL, 1, NULL);
     xTaskCreate(ultrasonic_task1, "Ultrasonic Task 1", 1024, NULL, 1, NULL);
     xTaskCreate(ultrasonic_task2, "Ultrasonic Task 2", 1024, NULL, 1, NULL);
     xTaskCreate(motor_control_task, "Motor Task", 1024, NULL, 1, 0);
+    xTaskCreate(switch_task,"Switch Taske",1024,NULL,2,0);
     // Start the FreeRTOS scheduler
     vTaskStartScheduler();
 

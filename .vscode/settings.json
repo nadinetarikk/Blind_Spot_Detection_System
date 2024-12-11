@@ -1,6 +1,5 @@
 {
-  "files.associations": {
-    "infrared_sensor.c": "cpp",
-    "main.h": "c"
-  }
+    "files.associations": {
+        "ultrasonic_sensor.c": "cpp"
+    }
 }
