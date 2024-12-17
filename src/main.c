@@ -101,10 +101,10 @@ void motor_control_task(void *pvParameters)
             }
             else
             {
-            motor_control(100, true, FRONT_LEFT);
-            motor_control(100, true, BACK_LEFT);
-            motor_control(100, true, FRONT_RIGHT);
-            motor_control(100, true, BACK_RIGHT);
+            motor_control(20, true, FRONT_LEFT);
+            motor_control(20, true, BACK_LEFT);
+            motor_control(20, true, FRONT_RIGHT);
+            motor_control(20, true, BACK_RIGHT);
             }
         }
         else
